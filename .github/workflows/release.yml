@@ -1,30 +1,14 @@
 name: Generate Release
 on:
-  schedule:
-    - cron:  '0 0 * * *'
   workflow_dispatch:
 jobs:
   sitemaps:
     runs-on: ubuntu-20.04
     name: Fetch Sitemaps
-    outputs:
-      tag: ${{ steps.tag.outputs.date }}
     steps:
-      - name: Generate Tag
-        id: tag
-        run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
-      - name: Setup Tools
+      - name: Setup Environment
         run: |
           pip install yq
-      - name: Create Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-        run: |
-          gh release create \
-            --repo "$GITHUB_REPOSITORY" \
-            --title "${{ steps.tag.outputs.date }}" \
-            --notes "Action URL: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
-            "${{ steps.tag.outputs.date }}"
       - name: Fetch Sitemap Index
         run: |
           wget \
@@ -33,15 +17,17 @@ jobs:
             --waitretry 10 \
             --retry-on-http-error 500,503 \
             --user-agent "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
-            --directory-prefix sitemaps/ \
+            --output-document sitemapindex.xml \
             'https://chrome.google.com/webstore/sitemap'
-      - name: Fetch Sitemap Shards
+      - name: Extract Sitemap URLs
         run: |
           xq \
             --raw-output \
             '.sitemapindex.sitemap[]?.loc' \
-            sitemaps/sitemap |
-            sort --random-sort |
+            ./sitemapindex.xml > sitemapindex.txt
+      - name: Fetch Sitemap Shards
+        run: |
+            sort --random-sort sitemapindex.txt |
             parallel \
               --max-procs 10 \
               --max-replace-args 100 \
@@ -52,19 +38,30 @@ jobs:
                 --waitretry 10 \
                 --retry-on-http-error 500,503 \
                 --user-agent '${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}' \
-                --directory-prefix sitemaps/ \
+                --directory-prefix . \
                 --input-file -"
-      - name: Archive
+      - name: Rename Sitemap Shards
         run: |
-          tar -czvf sitemaps.tgz -C sitemaps/ .
-      - name: Upload
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          for i in "sitemap?"*; do
+            mv "$i" "$(echo "$i.xml" | sed -e 's/[?&]/_/g' -e 's/=/-/g')"
+          done
+      - name: Archive Sitemaps
         run: |
-          gh release upload \
-            --repo "$GITHUB_REPOSITORY" \
-            "${{ steps.tag.outputs.date }}" \
-            sitemaps.tgz
+          zip \
+            --junk-paths \
+            --recurse-paths "sitemap.zip" \
+            sitemap*.xml
+      - name: Extract URLs
+        run: |
+          ls -1 "sitemap_"*".xml" | parallel 'xq --raw-output ".urlset.url[]?.loc"' > sitemap.txt
+      - name: Upload URLs
+        uses: actions/upload-artifact@v2
+        with:
+          name: sitemaps
+          path: |
+            sitemap.zip
+            sitemapindex.txt
+            sitemap.txt
   details:
     runs-on: ubuntu-20.04
     needs: sitemaps
@@ -74,53 +71,69 @@ jobs:
       matrix:
         prefix: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p']
     steps:
-      - name: Setup Tools
+      - name: Download URLs
+        uses: actions/download-artifact@v2
+        with:
+          name: sitemaps
+          path: sitemaps
+      - name: Extract URLs
         run: |
-          pip install yq
-      - name: Fetch Sitemaps
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-        run: |
-          gh release download \
-            --repo "$GITHUB_REPOSITORY" \
-            --pattern sitemaps.tgz \
-            "${{needs.sitemaps.outputs.tag}}"
-      - name: Extract Sitemaps
-        run: |
-          tar -xf sitemaps.tgz
+          awk -F'/' '$7 ~ /^${{matrix.prefix}}/ {
+            print "https://chrome.google.com/webstore/ajax/detail?pv=20210820&id=" substr($7,0,32)
+          }' ./sitemaps/sitemap.txt > details.txt
       - name: Fetch Details
         run: |
-          ls -1 "sitemap?"* |
-            parallel 'xq --raw-output ".urlset.url[]?.loc"' |
-            awk -F'/' '$7 ~ /^${{matrix.prefix}}/ {
-              print "https://chrome.google.com/webstore/ajax/detail?pv=20210820&id=" substr($7,0,32)
-            }' |
-            parallel \
-              --max-procs 10 \
-              --max-replace-args 1000 \
-              --pipe \
-              "wget \
-                --no-verbose \
-                --tries 3 \
-                --waitretry 10 \
-                --retry-on-http-error 500,503 \
-                --user-agent '${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}' \
-                --output-document {#}.details.json \
-                --method POST \
-                --input-file -" || true
-      - name: Create Directories
+          cat details.txt | parallel \
+            --max-procs 10 \
+            --max-replace-args 1000 \
+            --pipe \
+            "wget \
+              --no-verbose \
+              --tries 3 \
+              --waitretry 10 \
+              --retry-on-http-error 500,503 \
+              --user-agent '${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}' \
+              --directory-prefix ./ajax-details-raw/ \
+              --method POST \
+              --input-file -" || true
+      - name: Extract Details
         run: |
-          mkdir -p manifests/ details/
-      - name: Extract Files
+          mkdir ./ajax-details/
+          for i in "./ajax-details-raw/detail?"*; do
+            sed "s/)]}'$//" "$i" > "./ajax-details/$(echo "$i" | cut -d'=' -f3).json"
+          done
+          rm -rf ./ajax-details-raw/
+      #- name: Archive Details
+      #  run: |
+      #    zip \
+      #      --junk-paths \
+      #      --recurse-paths \
+      #      "${{matrix.prefix}}.zip" \
+      #      ./details/
+      #- name: Upload Details
+      #  uses: actions/upload-artifact@v2
+      #  with:
+      #    name: details
+      #    path: "${{matrix.prefix}}.zip"
+      - name: Extract Manifests
         run: |
-          grep --no-filename --fixed-strings getitemdetailresponse *.details.json |
-            sed "s/)]}'$//" |
-            jq --join-output '.[1][1] | [
-              .[0][0],
-              "\u001F",
-              .[9][0],
-              "\u001F", 
-              {
+          mkdir ../manifests && ls -1 . | parallel "jq --raw-output '.[1][1][9][0]' {} > ../manifests/{}"
+        working-directory: ./ajax-details/
+      - name: Archive Manifests
+        run: |
+          zip \
+            --junk-paths \
+            --recurse-paths \
+            "${{matrix.prefix}}.zip" \
+            ./manifests/
+      - name: Upload Manifests
+        uses: actions/upload-artifact@v2
+        with:
+          name: manifests
+          path: "${{matrix.prefix}}.zip"
+      - name: Extract Details
+        run: |
+          mkdir ../details && ls -1 . | parallel "jq '.[1][1] | {
                 name: .[0][1],
                 summary: .[0][6],
                 description: .[1],
@@ -131,26 +144,17 @@ jobs:
                 version: .[6],
                 updated: .[7],
                 size: .[25],
-              },
-              "\u0000"
-            ][]' |
-            gawk 'BEGIN {
-              RS = "\0";
-              FS = "\x1F"
-            }; {
-              print $2 > "manifests/" $1 ".json"
-              print $3 > "details/" $1 ".json"
-            }'
-      - name: Archive
+              }' {} > ../details/{}"
+        working-directory: ./ajax-details/
+      - name: Archive Details
         run: |
-          tar -czvf "manifests_${{matrix.prefix}}.tgz" -C manifests/ .
-          tar -czvf "details_${{matrix.prefix}}.tgz" -C details/ .
-      - name: Upload
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-        run: |
-          gh release upload \
-            --repo "$GITHUB_REPOSITORY" \
-            "${{needs.sitemaps.outputs.tag}}" \
-            "manifests_${{matrix.prefix}}.tgz" \
-            "details_${{matrix.prefix}}.tgz"      
+          zip \
+            --junk-paths \
+            --recurse-paths \
+            "${{matrix.prefix}}.zip" \
+            ./details/
+      - name: Upload Details
+        uses: actions/upload-artifact@v2
+        with:
+          name: details
+          path: "${{matrix.prefix}}.zip"
