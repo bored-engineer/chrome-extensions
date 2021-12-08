@@ -53,7 +53,7 @@ jobs:
             sitemap*.xml
       - name: Extract URLs
         run: |
-          ls -1 "sitemap_"*".xml" | parallel 'xq --raw-output ".urlset.url[]?.loc"' > sitemap.txt
+          ls -1 "sitemap_"*".xml" | xargs -n200 -P10 xq --raw-output ".urlset.url[]?.loc" > sitemap.txt
       - name: Upload URLs
         uses: actions/upload-artifact@v2
         with:
