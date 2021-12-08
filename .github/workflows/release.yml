@@ -1,0 +1,155 @@
+name: Generate Release
+on:
+  workflow_dispatch:
+jobs:
+  sitemaps:
+    runs-on: ubuntu-20.04
+    name: Fetch Sitemaps
+    outputs:
+      tag: ${{ steps.tag.outputs.date }}
+    steps:
+      - name: Generate Tag
+        id: tag
+        run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
+      - name: Setup Tools
+        run: |
+          pip install yq
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          gh release create \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "${{ steps.tag.outputs.date }}" \
+            --notes "Action URL: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            "${{ steps.tag.outputs.date }}"
+      - name: Fetch Sitemap Index
+        run: |
+          wget \
+            --no-verbose \
+            --tries 3 \
+            --waitretry 10 \
+            --retry-on-http-error 500,503 \
+            --user-agent "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
+            --directory-prefix sitemaps/ \
+            'https://chrome.google.com/webstore/sitemap'
+      - name: Fetch Sitemap Shards
+        run: |
+          xq \
+            --raw-output \
+            '.sitemapindex.sitemap[]?.loc' \
+            sitemaps/sitemap |
+            head -n 10 |
+            sort --random-sort |
+            parallel \
+              --max-procs 10 \
+              --max-replace-args 100 \
+              --pipe \
+              "wget \
+                --no-verbose \
+                --tries 3 \
+                --waitretry 10 \
+                --retry-on-http-error 500,503 \
+                --user-agent '${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}' \
+                --directory-prefix sitemaps/ \
+                --input-file -"
+      - name: Archive
+        run: |
+          tar -czvf sitemaps.tgz -C sitemaps/ .
+      - name: Upload
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          gh release upload \
+            --repo "$GITHUB_REPOSITORY" \
+            "${{ steps.tag.outputs.date }}" \
+            sitemaps.tgz
+  details:
+    runs-on: ubuntu-20.04
+    needs: sitemaps
+    name: Fetch Details (${{matrix.prefix}})
+    strategy:
+      max-parallel: 16
+      matrix:
+        prefix: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p']
+    steps:
+      - name: Setup Tools
+        run: |
+          pip install yq
+      - name: Fetch Sitemaps
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          gh release download \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern sitemaps.tgz \
+            "${{needs.sitemaps.outputs.tag}}"
+      - name: Extract Sitemaps
+        run: |
+          tar -xf sitemaps.tgz
+      - name: Fetch Details
+        run: |
+          ls -1 "sitemap?"* |
+            parallel 'xq --raw-output ".urlset.url[]?.loc"' |
+            awk -F'/' '$7 ~ /^${{matrix.prefix}}/ {
+              print "https://chrome.google.com/webstore/ajax/detail?pv=20210820&id=" substr($7,0,32)
+            }' |
+            parallel \
+              --max-procs 10 \
+              --max-replace-args 1000 \
+              --pipe \
+              "wget \
+                --no-verbose \
+                --tries 3 \
+                --waitretry 10 \
+                --retry-on-http-error 500,503 \
+                --user-agent '${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}' \
+                --output-document {#}.details.json \
+                --method POST \
+                --input-file -" || true
+      - name: Create Directories
+        run: |
+          mkdir -p manifests/ details/
+      - name: Extract Files
+        run: |
+          grep --no-filename --fixed-strings getitemdetailresponse *.details.json |
+            sed "s/)]}'$//" |
+            jq --join-output '.[1][1] | [
+              .[0][0],
+              "\u001F",
+              .[9][0],
+              "\u001F", 
+              {
+                name: .[0][1],
+                summary: .[0][6],
+                description: .[1],
+                category: .[0][10],
+                rating: .[0][12],
+                reviews: .[0][22],
+                users: .[0][23],
+                version: .[6],
+                updated: .[7],
+                size: .[25],
+              },
+              "\u0000"
+            ][]' |
+            gawk 'BEGIN {
+              RS = "\0";
+              FS = "\x1F"
+            }; {
+              print $2 > "manifests/" $1 ".json"
+              print $3 > "details/" $1 ".json"
+            }'
+      - name: Archive
+        run: |
+          tar -czvf "manifests_${{matrix.prefix}}.tgz" -C manifests/ .
+          tar -czvf "details_${{matrix.prefix}}.tgz" -C details/ .
+      - name: Upload
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          gh release upload \
+            --repo "$GITHUB_REPOSITORY" \
+            "${{needs.sitemaps.outputs.tag}}" \
+            "manifests_${{matrix.prefix}}.tgz" \
+            "details_${{matrix.prefix}}.tgz"      
