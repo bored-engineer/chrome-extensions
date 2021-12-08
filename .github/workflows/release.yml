@@ -39,7 +39,6 @@ jobs:
             --raw-output \
             '.sitemapindex.sitemap[]?.loc' \
             sitemaps/sitemap |
-            head -n 10 |
             sort --random-sort |
             parallel \
               --max-procs 10 \
