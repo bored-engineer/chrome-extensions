@@ -6,9 +6,6 @@ jobs:
     runs-on: ubuntu-20.04
     name: Fetch Sitemaps
     steps:
-      - name: Setup Environment
-        run: |
-          pip install yq
       - name: Fetch Sitemap Index
         run: |
           wget \
@@ -21,10 +18,8 @@ jobs:
             'https://chrome.google.com/webstore/sitemap'
       - name: Extract Sitemap URLs
         run: |
-          xq \
-            --raw-output \
-            '.sitemapindex.sitemap[]?.loc' \
-            ./sitemapindex.xml > sitemapindex.txt
+          grep -F '<loc>' ./sitemapindex.xml | 
+            awk -F '[<>]' '{ gsub(/&amp;/, "\\&", $3); print $3 }' > sitemapindex.txt
       - name: Fetch Sitemap Shards
         run: |
             sort --random-sort sitemapindex.txt |
@@ -40,28 +35,20 @@ jobs:
                 --user-agent '${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}' \
                 --directory-prefix . \
                 --input-file -"
-      - name: Rename Sitemap Shards
-        run: |
-          for i in "sitemap?"*; do
-            mv "$i" "$(echo "$i.xml" | sed -e 's/[?&]/_/g' -e 's/=/-/g')"
-          done
-      - name: Archive Sitemaps
-        run: |
-          zip \
-            --junk-paths \
-            --recurse-paths "sitemap.zip" \
-            sitemap*.xml
       - name: Extract URLs
         run: |
-          ls -1 "sitemap_"*".xml" | xargs -n200 -P10 xq --raw-output ".urlset.url[]?.loc" > sitemap.txt
-      - name: Upload URLs
+          grep -F '<loc>' sitemap_*.xml | 
+            awk -F '[<>]' '{ gsub(/&amp;/, "\\&", $3); print $3 }' > ./urls.txt
+      - name: Extract Extensions
+        run: |
+          awk -F/ '{ print substr($7, 0, 32) }' ./urls.txt > ./extensions.txt
+      - name: Upload 
         uses: actions/upload-artifact@v2
         with:
           name: sitemaps
           path: |
-            sitemap.zip
-            sitemapindex.txt
-            sitemap.txt
+            urls.txt
+            extensions.txt
   details:
     runs-on: ubuntu-20.04
     needs: sitemaps
@@ -76,14 +63,9 @@ jobs:
         with:
           name: sitemaps
           path: sitemaps
-      - name: Extract URLs
-        run: |
-          awk -F'/' '$7 ~ /^${{matrix.prefix}}/ {
-            print "https://chrome.google.com/webstore/ajax/detail?pv=20210820&id=" substr($7,0,32)
-          }' ./sitemaps/sitemap.txt > details.txt
       - name: Fetch Details
         run: |
-          cat details.txt | parallel \
+          grep "^${{matrix.prefix}}" ./sitemaps/extensions.txt | parallel \
             --max-procs 10 \
             --max-replace-args 10000 \
             --pipe \
