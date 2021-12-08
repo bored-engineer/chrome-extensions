@@ -85,7 +85,7 @@ jobs:
         run: |
           cat details.txt | parallel \
             --max-procs 10 \
-            --max-replace-args 1000 \
+            --max-replace-args 10000 \
             --pipe \
             "wget \
               --no-verbose \
