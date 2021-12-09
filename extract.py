@@ -74,4 +74,5 @@ if __name__ == "__main__":
                             "size": traverse(data, 25),
                         }
                     ),
+                    indent=2,
                 )
