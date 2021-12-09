@@ -90,10 +90,13 @@ jobs:
       - name: Extract Details
         run: |
           python extract.py ${{matrix.prefix}}
+      - name: Upload Manifests
+        uses: actions/upload-artifact@v2
+        with:
+          name: manifests
+          path: "manifests-${{matrix.prefix}}.tgz"
       - name: Upload Details
         uses: actions/upload-artifact@v2
         with:
           name: details
-          path: |
-            "manifests-${{matrix.prefix}}.tgz"
-            "details-${{matrix.prefix}}.tgz"
+          path: "details-${{matrix.prefix}}.tgz"
