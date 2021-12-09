@@ -58,6 +58,11 @@ jobs:
       matrix:
         prefix: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p']
     steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.9"
       - name: Download URLs
         uses: actions/download-artifact@v2
         with:
@@ -75,68 +80,16 @@ jobs:
               --waitretry 10 \
               --retry-on-http-error 500,503 \
               --user-agent '${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}' \
-              --directory-prefix ./ajax-details-raw/ \
+              --output-document details.{#}.json \
               --method POST \
               --input-file -" || true
       - name: Extract Details
         run: |
-          mkdir ./ajax-details/
-          for i in "./ajax-details-raw/detail?"*; do
-            sed "s/)]}'$//" "$i" > "./ajax-details/$(echo "$i" | cut -d'=' -f3).json"
-          done
-          rm -rf ./ajax-details-raw/
-      #- name: Archive Details
-      #  run: |
-      #    zip \
-      #      --junk-paths \
-      #      --recurse-paths \
-      #      "${{matrix.prefix}}.zip" \
-      #      ./details/
-      #- name: Upload Details
-      #  uses: actions/upload-artifact@v2
-      #  with:
-      #    name: details
-      #    path: "${{matrix.prefix}}.zip"
-      - name: Extract Manifests
-        run: |
-          mkdir ../manifests && ls -1 . | parallel "jq --raw-output '.[1][1][9][0]' {} > ../manifests/{}"
-        working-directory: ./ajax-details/
-      - name: Archive Manifests
-        run: |
-          zip \
-            --junk-paths \
-            --recurse-paths \
-            "${{matrix.prefix}}.zip" \
-            ./manifests/
-      - name: Upload Manifests
-        uses: actions/upload-artifact@v2
-        with:
-          name: manifests
-          path: "${{matrix.prefix}}.zip"
-      - name: Extract Details
-        run: |
-          mkdir ../details && ls -1 . | parallel "jq '.[1][1] | {
-                name: .[0][1],
-                summary: .[0][6],
-                description: .[1],
-                category: .[0][10],
-                rating: .[0][12],
-                reviews: .[0][22],
-                users: .[0][23],
-                version: .[6],
-                updated: .[7],
-                size: .[25],
-              }' {} > ../details/{}"
-        working-directory: ./ajax-details/
-      - name: Archive Details
-        run: |
-          zip \
-            --junk-paths \
-            --recurse-paths \
-            "${{matrix.prefix}}.zip" \
-            ./details/
+          python extract.py ${{matrix.prefix}}
       - name: Upload Details
         uses: actions/upload-artifact@v2
         with:
           name: details
-          path: "${{matrix.prefix}}.zip"
+          path: |
+            "manifests-${{matrix.prefix}}.tgz"
+            "details-${{matrix.prefix}}.tgz"
