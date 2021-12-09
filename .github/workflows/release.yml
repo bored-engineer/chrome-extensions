@@ -22,19 +22,20 @@ jobs:
             awk -F '[<>]' '{ gsub(/&amp;/, "\\&", $3); print $3 }' > sitemapindex.txt
       - name: Fetch Sitemap Shards
         run: |
-            sort --random-sort sitemapindex.txt |
-            parallel \
-              --max-procs 10 \
-              --max-replace-args 100 \
-              --pipe \
-              "wget \
-                --no-verbose \
-                --tries 3 \
-                --waitretry 10 \
-                --retry-on-http-error 500,503 \
-                --user-agent '${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}' \
-                --directory-prefix . \
-                --input-file -"
+          head -n 10 sitemapindex.txt |
+          sort --random-sort |
+          parallel \
+            --max-procs 10 \
+            --max-replace-args 100 \
+            --pipe \
+            "wget \
+              --no-verbose \
+              --tries 3 \
+              --waitretry 10 \
+              --retry-on-http-error 500,503 \
+              --user-agent '${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}' \
+              --directory-prefix . \
+              --input-file -"
       - name: Extract URLs
         run: |
           grep -F '<loc>' sitemap_*.xml | 
