@@ -43,7 +43,7 @@ def addfile(tar: TarFile, filename: str, contents: str):
 
 if __name__ == "__main__":
     # Extract the responses from each details file iteratively
-    paths: Iterable[Path] = Path.cwd().glob("details.*.json")
+    paths: Iterable[Path] = Path.cwd().glob("*.details.json")
     responses: Iterable[Any] = chain.from_iterable(
         (extract_responses(path) for path in paths)
     )
@@ -72,7 +72,7 @@ if __name__ == "__main__":
                             "version": traverse(data, 6),
                             "updated": traverse(data, 7),
                             "size": traverse(data, 25),
-                        }
+                        },
+                        indent=2,
                     ),
-                    indent=2,
                 )
