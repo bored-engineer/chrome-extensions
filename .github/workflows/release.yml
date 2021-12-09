@@ -40,16 +40,19 @@ jobs:
         run: |
           grep -F '<loc>' sitemap_*.xml | 
             awk -F '[<>]' '{ gsub(/&amp;/, "\\&", $3); print $3 }' > ./urls.txt
-      - name: Extract Extensions
-        run: |
-          awk -F/ '{ print substr($7, 0, 32) }' ./urls.txt > ./extensions.txt
-      - name: Upload 
+      - name: Upload URLs
         uses: actions/upload-artifact@v2
         with:
           name: sitemaps
-          path: |
-            urls.txt
-            extensions.txt
+          path: urls.txt
+      - name: Extract Extensions
+        run: |
+          awk -F/ '{ print substr($7, 0, 32) }' ./urls.txt > ./extensions.txt
+      - name: Upload Extensions
+        uses: actions/upload-artifact@v2
+        with:
+          name: sitemaps
+          path: extensions.txt
   details:
     runs-on: ubuntu-20.04
     needs: sitemaps
