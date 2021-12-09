@@ -79,7 +79,9 @@ jobs:
           path: sitemaps
       - name: Fetch Details
         run: |
-          grep "^${{matrix.prefix}}" ./sitemaps/extensions.txt | parallel \
+          awk -F'/' '$0 ~ /^${{matrix.prefix}}/ {
+            print "https://chrome.google.com/webstore/ajax/detail?pv=20210820&id=" $0
+          }' ./sitemaps/extensions.txt | parallel \
             --max-procs 10 \
             --max-replace-args 10000 \
             --pipe \
