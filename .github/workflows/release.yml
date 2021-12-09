@@ -20,6 +20,11 @@ jobs:
         run: |
           grep -F '<loc>' ./sitemapindex.xml | 
             awk -F '[<>]' '{ gsub(/&amp;/, "\\&", $3); print $3 }' > sitemapindex.txt
+      - name: Upload Sitemap Index
+        uses: actions/upload-artifact@v2
+        with:
+          name: sitemaps
+          path: sitemapindex.txt
       - name: Fetch Sitemap Shards
         run: |
           head -n 10 sitemapindex.txt |
@@ -38,7 +43,7 @@ jobs:
               --input-file -"
       - name: Extract URLs
         run: |
-          grep -F '<loc>' sitemap_*.xml | 
+          grep -F '<loc>' "sitemap?"* | 
             awk -F '[<>]' '{ gsub(/&amp;/, "\\&", $3); print $3 }' > ./urls.txt
       - name: Upload URLs
         uses: actions/upload-artifact@v2
