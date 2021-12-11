@@ -148,6 +148,6 @@ jobs:
           gh release upload \
             --repo "$GITHUB_REPOSITORY" \
             "${{ steps.tag.outputs.date }}" \
-            "sitemaps.tar.bz" \
-            "manifests.tar.bz" \
-            "details.tar.bz"      
+            "sitemaps.tar.bz2" \
+            "manifests.tar.bz2" \
+            "details.tar.bz2"
