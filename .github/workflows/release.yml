@@ -101,9 +101,9 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: manifests
-          path: "manifests-${{matrix.prefix}}.tgz"
+          path: "manifests-${{matrix.prefix}}.tar"
       - name: Upload Details
         uses: actions/upload-artifact@v2
         with:
           name: details
-          path: "details-${{matrix.prefix}}.tgz"
+          path: "details-${{matrix.prefix}}.tar"
