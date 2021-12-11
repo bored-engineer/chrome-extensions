@@ -50,6 +50,8 @@ jobs:
         with:
           name: sitemaps
           path: "*.txt"
+          if-no-files-found: error
+          retention-days: 1
   details:
     runs-on: ubuntu-20.04
     needs: sitemaps
@@ -94,6 +96,8 @@ jobs:
         with:
           name: details
           path: "*.tar"
+          if-no-files-found: error
+          retention-days: 1
   release:
     runs-on: ubuntu-20.04
     needs: details
