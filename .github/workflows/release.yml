@@ -1,5 +1,7 @@
 name: Generate Release
 on:
+  schedule:
+    - cron: '0 0 * * *'
   workflow_dispatch:
 jobs:
   sitemaps:
