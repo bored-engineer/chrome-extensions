@@ -48,8 +48,8 @@ if __name__ == "__main__":
         (extract_responses(path) for path in paths)
     )
     # Open each of the output tarballs
-    with tar_open(f"manifests-{argv[1]}.tgz", "w:gz") as manifests, tar_open(
-        f"details-{argv[1]}.tgz", "w:gz"
+    with tar_open(f"manifests-{argv[1]}.tar", "w") as manifests, tar_open(
+        f"details-{argv[1]}.tar", "w"
     ) as details:
         for response in responses:
             data = response[1][1]
