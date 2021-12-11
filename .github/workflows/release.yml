@@ -100,10 +100,51 @@ jobs:
       - name: Upload Manifests
         uses: actions/upload-artifact@v2
         with:
-          name: manifests
-          path: "manifests-${{matrix.prefix}}.tar"
-      - name: Upload Details
-        uses: actions/upload-artifact@v2
+          name: details
+          path: |
+            "manifests-${{matrix.prefix}}.tar"
+            "details-${{matrix.prefix}}.tar"
+  release:
+    runs-on: ubuntu-20.04
+    needs: details
+    name: Release
+    steps:
+      - name: Download Manifest
+        uses: actions/download-artifact@v2
         with:
           name: details
-          path: "details-${{matrix.prefix}}.tar"
+          path: details
+      - name: Concatenate Manifests
+        run: |
+          ls -1 details/manifests-*.tar | xargs -n1 tar --concatenate --file manifests.tar
+      - name: Compress Manifests
+        run: |
+          gzip manifests.tar
+      - name: Concatenate Details
+        run: |
+          ls -1 details/details-*.tar | xargs -n1 tar --concatenate --file details.tar
+      - name: Compress Details
+        run: |
+          gzip details.tar
+      - name: Generate Tag
+        id: tag
+        run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          gh release create \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "${{ steps.tag.outputs.date }}" \
+            --notes "Action URL: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            "${{ steps.tag.outputs.date }}"
+      - name: Upload Artifacts
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          gh release upload \
+            --repo "$GITHUB_REPOSITORY" \
+            "${{ steps.tag.outputs.date }}" \
+            "manifests.tar.gz" \
+            "details.tar.gz"      
+      
