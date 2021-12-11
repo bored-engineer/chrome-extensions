@@ -27,7 +27,7 @@ jobs:
           path: sitemapindex.txt
       - name: Fetch Sitemap Shards
         run: |
-          head -n 10 sitemapindex.txt |
+          head -n 1000 sitemapindex.txt |
           sort --random-sort |
           parallel \
             --max-procs 10 \
@@ -117,13 +117,13 @@ jobs:
           ls -1 details/manifests-*.tar | xargs -n1 tar --concatenate --file manifests.tar
       - name: Compress Manifests
         run: |
-          gzip manifests.tar
+          bzip2 manifests.tar
       - name: Concatenate Details
         run: |
           ls -1 details/details-*.tar | xargs -n1 tar --concatenate --file details.tar
       - name: Compress Details
         run: |
-          gzip details.tar
+          bzip2 details.tar
       - name: Generate Tag
         id: tag
         run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
@@ -143,6 +143,5 @@ jobs:
           gh release upload \
             --repo "$GITHUB_REPOSITORY" \
             "${{ steps.tag.outputs.date }}" \
-            "manifests.tar.gz" \
-            "details.tar.gz"      
+            *".tar.bz"  
       
