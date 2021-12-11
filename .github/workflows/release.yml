@@ -20,11 +20,6 @@ jobs:
         run: |
           grep -F '<loc>' ./sitemapindex.xml | 
             awk -F '[<>]' '{ gsub(/&amp;/, "\\&", $3); print $3 }' > sitemapindex.txt
-      - name: Upload Sitemap Index
-        uses: actions/upload-artifact@v2
-        with:
-          name: sitemaps
-          path: sitemapindex.txt
       - name: Fetch Sitemap Shards
         run: |
           head -n 1000 sitemapindex.txt |
@@ -45,19 +40,14 @@ jobs:
         run: |
           grep -F '<loc>' "sitemap?"* | 
             awk -F '[<>]' '{ gsub(/&amp;/, "\\&", $3); print $3 }' > ./urls.txt
-      - name: Upload URLs
-        uses: actions/upload-artifact@v2
-        with:
-          name: sitemaps
-          path: urls.txt
       - name: Extract Extensions
         run: |
           awk -F/ '{ print substr($7, 0, 32) }' ./urls.txt > ./extensions.txt
-      - name: Upload Extensions
+      - name: Upload
         uses: actions/upload-artifact@v2
         with:
           name: sitemaps
-          path: extensions.txt
+          path: "*.txt"
   details:
     runs-on: ubuntu-20.04
     needs: sitemaps
@@ -107,6 +97,15 @@ jobs:
     needs: details
     name: Release
     steps:
+      - name: Download Sitemaps
+        uses: actions/download-artifact@v2
+        with:
+          name: sitemaps
+          path: sitemaps
+      - name: Compress Sitemaps
+        working-directory: sitemaps
+        run: |
+          tar -cvjSf ../sitemaps.tar.bz2 .
       - name: Download Manifest
         uses: actions/download-artifact@v2
         with:
