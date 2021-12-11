@@ -24,7 +24,7 @@ jobs:
             awk -F '[<>]' '{ gsub(/&amp;/, "\\&", $3); print $3 }' > sitemapindex.txt
       - name: Fetch Sitemap Shards
         run: |
-          head -n 1000 sitemapindex.txt |
+          head -n 100 sitemapindex.txt |
           sort --random-sort |
           parallel \
             --max-procs 10 \
