@@ -64,7 +64,7 @@ if __name__ == "__main__":
                         {
                             "name": traverse(data, 0, 1),
                             "summary": traverse(data, 0, 6),
-                            "description": traverse(data, 1, 1),
+                            "description": traverse(data, 1),
                             "category": traverse(data, 0, 10),
                             "rating": traverse(data, 0, 12),
                             "reviews": traverse(data, 0, 22),
