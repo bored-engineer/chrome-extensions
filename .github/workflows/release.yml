@@ -25,6 +25,7 @@ jobs:
       - name: Fetch Sitemap Shards
         run: |
           sort --random-sort ./sitemapindex.txt |
+          grep -v "&hl=" |
           parallel \
             --max-procs 10 \
             --max-replace-args 100 \
@@ -43,7 +44,7 @@ jobs:
             awk -F '[<>]' '{ gsub(/&amp;/, "\\&", $3); print $3 }' > ./urls.txt
       - name: Extract Extensions
         run: |
-          awk -F/ '{ print substr($7, 0, 32) }' ./urls.txt > ./extensions.txt
+          awk -F/ '{ print substr($7, 0, 32) }' ./urls.txt | sort -u > ./extensions.txt
       - name: Upload
         uses: actions/upload-artifact@v2
         with:
