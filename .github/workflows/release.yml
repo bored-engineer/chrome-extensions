@@ -17,7 +17,7 @@ jobs:
             --retry-on-http-error 500,503 \
             --user-agent "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}" \
             --output-document sitemapindex.xml \
-            'https://chrome.google.com/webstore/sitemap'
+            'https://chromewebstore.google.com/sitemap'
       - name: Extract Sitemap URLs
         run: |
           grep -F '<loc>' ./sitemapindex.xml | 
