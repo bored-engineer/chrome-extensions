@@ -94,7 +94,7 @@ jobs:
       - name: Upload Manifests
         uses: actions/upload-artifact@v4
         with:
-          name: details
+          name: "details-${{matrix.prefix}}"
           path: "*.tar"
           if-no-files-found: error
           retention-days: 1
@@ -115,8 +115,9 @@ jobs:
       - name: Download Manifest
         uses: actions/download-artifact@v4
         with:
-          name: details
           path: details
+          pattern: details-*
+          merge-multiple: true
       - name: Concatenate Manifests
         run: |
           ls -1 details/manifests-*.tar | xargs -n1 tar --concatenate --file manifests.tar
