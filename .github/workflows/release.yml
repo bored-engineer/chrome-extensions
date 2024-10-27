@@ -46,7 +46,7 @@ jobs:
         run: |
           awk -F/ '{ print substr($7, 0, 32) }' ./urls.txt | sort -u > ./extensions.txt
       - name: Upload
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: sitemaps
           path: "*.txt"
@@ -61,13 +61,13 @@ jobs:
       matrix:
         prefix: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p']
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
-          python-version: "3.9"
+          python-version: "3.12"
       - name: Download URLs
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: sitemaps
           path: sitemaps
@@ -92,7 +92,7 @@ jobs:
         run: |
           python extract.py ${{matrix.prefix}}
       - name: Upload Manifests
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: details
           path: "*.tar"
@@ -104,7 +104,7 @@ jobs:
     name: Release
     steps:
       - name: Download Sitemaps
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: sitemaps
           path: sitemaps
@@ -113,7 +113,7 @@ jobs:
         run: |
           tar -cvjSf ../sitemaps.tar.bz2 .
       - name: Download Manifest
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: details
           path: details
