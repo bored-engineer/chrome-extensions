@@ -44,7 +44,7 @@ jobs:
             awk -F '[<>]' '{ gsub(/&amp;/, "\\&", $3); print $3 }' > ./urls.txt
       - name: Extract Extensions
         run: |
-          awk -F/ '{ print substr($7, 0, 32) }' ./urls.txt | sort -u > ./extensions.txt
+          awk -F/ '{ print substr($6, 0, 32) }' ./urls.txt | sort -u > ./extensions.txt
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
