@@ -3,4 +3,4 @@ This repository contains [`manifest.json`](https://developer.chrome.com/extensio
 
 This dataset is [automatically updated](./.github/workflows/release.yml) every day. It's meant to be useful for analysis of the Chrome extension ecosystem, such as what permissions are requested, common Content Security Policies, etc.
 
-This repository was heavily inspired by [mandatoryprogrammer/chrome-extension-manifests-dataset](https://github.com/mandatoryprogrammer/chrome-extension-manifests-dataset).
+This repository was directly inspired by [mandatoryprogrammer/chrome-extension-manifests-dataset](https://github.com/mandatoryprogrammer/chrome-extension-manifests-dataset).
