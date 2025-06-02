@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
 jobs:
   sitemaps:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     name: Fetch Sitemaps
     steps:
       - name: Fetch Sitemap Index
@@ -53,7 +53,7 @@ jobs:
           if-no-files-found: error
           retention-days: 1
   details:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     needs: sitemaps
     name: Fetch Details (${{matrix.prefix}})
     strategy:
@@ -99,7 +99,7 @@ jobs:
           if-no-files-found: error
           retention-days: 1
   release:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     needs: details
     name: Release
     steps:
