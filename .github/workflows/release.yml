@@ -8,8 +8,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     name: Fetch Sitemaps
     steps:
       - name: Fetch Sitemap Index
@@ -52,6 +50,8 @@ jobs:
         id: tag
         run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
       - name: Create Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create \
             --repo "$GITHUB_REPOSITORY" \
@@ -59,6 +59,8 @@ jobs:
             --notes "Action URL: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
             "${{ steps.tag.outputs.date }}"
       - name: Upload Artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release upload \
             --repo "$GITHUB_REPOSITORY" \
