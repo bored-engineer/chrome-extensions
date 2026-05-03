@@ -48,7 +48,7 @@ jobs:
       - name: Compress Sitemaps
         working-directory: sitemaps
         run: |
-          tar -cvjSf ../sitemaps.tar.bz2 *.txt
+          tar -cvjSf sitemaps.tar.bz2 *.txt
       - name: Generate Tag
         id: tag
         run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
