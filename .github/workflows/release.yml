@@ -6,6 +6,10 @@ on:
 jobs:
   sitemaps:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     name: Fetch Sitemaps
     steps:
       - name: Fetch Sitemap Index
@@ -45,95 +49,10 @@ jobs:
       - name: Extract Extensions
         run: |
           awk -F/ '{ print substr($6, 0, 32) }' ./urls.txt | sort -u > ./extensions.txt
-      - name: Upload
-        uses: actions/upload-artifact@v4
-        with:
-          name: sitemaps
-          path: "*.txt"
-          if-no-files-found: error
-          retention-days: 1
-  details:
-    runs-on: ubuntu-latest
-    needs: sitemaps
-    name: Fetch Details (${{matrix.prefix}})
-    strategy:
-      max-parallel: 16
-      matrix:
-        prefix: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p']
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v2
-        with:
-          python-version: "3.12"
-      - name: Download URLs
-        uses: actions/download-artifact@v4
-        with:
-          name: sitemaps
-          path: sitemaps
-      - name: Fetch Details
-        run: |
-          awk -F'/' '$0 ~ /^${{matrix.prefix}}/ {
-            print "https://chrome.google.com/webstore/ajax/detail?pv=20210820&id=" $0
-          }' ./sitemaps/extensions.txt | parallel \
-            --max-procs 10 \
-            --max-replace-args 10000 \
-            --pipe \
-            "wget \
-              --no-verbose \
-              --tries 3 \
-              --waitretry 10 \
-              --retry-on-http-error 500,503 \
-              --user-agent '${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}' \
-              --output-document details.{#}.json \
-              --method POST \
-              --input-file -" || true
-      - name: Extract Details
-        run: |
-          python extract.py ${{matrix.prefix}}
-      - name: Upload Manifests
-        uses: actions/upload-artifact@v4
-        with:
-          name: "details-${{matrix.prefix}}"
-          path: "*.tar"
-          if-no-files-found: error
-          retention-days: 1
-  release:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    needs: details
-    name: Release
-    steps:
-      - name: Download Sitemaps
-        uses: actions/download-artifact@v4
-        with:
-          name: sitemaps
-          path: sitemaps
       - name: Compress Sitemaps
         working-directory: sitemaps
         run: |
-          tar -cvjSf ../sitemaps.tar.bz2 .
-      - name: Download Manifest
-        uses: actions/download-artifact@v4
-        with:
-          path: details
-          pattern: details-*
-          merge-multiple: true
-      - name: Concatenate Manifests
-        run: |
-          ls -1 details/manifests-*.tar | xargs -n1 tar --concatenate --file manifests.tar
-      - name: Compress Manifests
-        run: |
-          bzip2 manifests.tar
-      - name: Concatenate Details
-        run: |
-          ls -1 details/details-*.tar | xargs -n1 tar --concatenate --file details.tar
-      - name: Compress Details
-        run: |
-          bzip2 details.tar
+          tar -cvjSf ../sitemaps.tar.bz2 *.txt
       - name: Generate Tag
         id: tag
         run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
@@ -149,6 +68,4 @@ jobs:
           gh release upload \
             --repo "$GITHUB_REPOSITORY" \
             "${{ steps.tag.outputs.date }}" \
-            "sitemaps.tar.bz2" \
-            "manifests.tar.bz2" \
-            "details.tar.bz2"
+            "sitemaps.tar.bz2"
