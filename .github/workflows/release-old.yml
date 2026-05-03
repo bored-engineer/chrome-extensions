@@ -1,4 +1,4 @@
-name: Generate Release
+name: Generate Release [old]
 on:
   #schedule:
   #  - cron: '0 0 * * *'
