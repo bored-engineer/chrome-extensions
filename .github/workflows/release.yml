@@ -46,7 +46,6 @@ jobs:
         run: |
           awk -F/ '{ print substr($6, 0, 32) }' ./urls.txt | sort -u > ./extensions.txt
       - name: Compress Sitemaps
-        working-directory: sitemaps
         run: |
           tar -cvjSf sitemaps.tar.bz2 *.txt
       - name: Generate Tag
