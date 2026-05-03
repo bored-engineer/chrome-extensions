@@ -40,6 +40,10 @@ jobs:
               --user-agent '${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}' \
               --directory-prefix . \
               --input-file -"
+      - name: Extract URLs
+        run: |
+          grep -F '<loc>' "sitemap?"* | 
+            awk -F '[<>]' '{ gsub(/&amp;/, "\\&", $3); print $3 }' > ./urls.txt
       - name: Extract Extensions
         run: |
           awk -F/ '{ print substr($6, 0, 32) }' ./urls.txt | sort -u > ./extensions.txt
